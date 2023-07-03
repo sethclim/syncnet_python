@@ -32,6 +32,8 @@ print("Model %s loaded."%opt.initial_model);
 flist = glob.glob(os.path.join(opt.crop_dir,opt.reference,'0*.avi'))
 flist.sort()
 
+print(flist)
+
 # ==================== GET OFFSETS ====================
 
 dists = []

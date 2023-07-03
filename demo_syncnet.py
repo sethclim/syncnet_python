@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #-*- coding: utf-8 -*-
-
+import torch
 import time, pdb, argparse, subprocess
 
 from SyncNetInstance import *
@@ -19,7 +19,8 @@ parser.add_argument('--reference', type=str, default="demo", help='');
 
 opt = parser.parse_args();
 
-
+print(torch.__version__)
+print(torch.cuda.is_available())
 # ==================== RUN EVALUATION ====================
 
 s = SyncNetInstance();

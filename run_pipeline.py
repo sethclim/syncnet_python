@@ -6,6 +6,7 @@ from shutil import rmtree
 
 import scenedetect
 from scenedetect.video_manager import VideoManager
+from scenedetect import open_video
 from scenedetect.scene_manager import SceneManager
 from scenedetect.frame_timecode import FrameTimecode
 from scenedetect.stats_manager import StatsManager
@@ -68,26 +69,39 @@ def track_shot(opt,scenefaces):
   iouThres  = 0.5     # Minimum IOU between consecutive face detections
   tracks    = []
 
+  count = 0
   while True:
+    count = count + 1
+    print("Count ", count)
     track     = []
     for framefaces in scenefaces:
+      print("FACE FRAMES ", len(framefaces))
       for face in framefaces:
+        print("face ", face)
         if track == []:
+          print("append face")
           track.append(face)
           framefaces.remove(face)
         elif face['frame'] - track[-1]['frame'] <= opt.num_failed_det:
+          print("num_failed_det ", face['frame'] - track[-1]['frame'])
           iou = bb_intersection_over_union(face['bbox'], track[-1]['bbox'])
           if iou > iouThres:
+            print("append face")
             track.append(face)
+            print("track ", len(track))    
             framefaces.remove(face)
+            print("Continue")
             continue
         else:
+          print("BREAKKK")
           break
 
+    print("track2 ", len(track))        
     if track == []:
+      print("TRACK = []")
       break
     elif len(track) > opt.min_track:
-      
+      print("len(track)", len(track))
       framenum    = np.array([ f['frame'] for f in track ])
       bboxes      = np.array([np.array(f['bbox']) for f in track])
 
@@ -99,9 +113,13 @@ def track_shot(opt,scenefaces):
         bboxes_i.append(interpfn(frame_i))
       bboxes_i  = np.stack(bboxes_i, axis=1)
 
-      if max(np.mean(bboxes_i[:,2]-bboxes_i[:,0]), np.mean(bboxes_i[:,3]-bboxes_i[:,1])) > opt.min_face_size:
+      face_size = np.mean(bboxes_i[:,2]-bboxes_i[:,0]), np.mean(bboxes_i[:,3]-bboxes_i[:,1])
+      print(face_size)
+      if max(face_size) > opt.min_face_size:
+        print("Passed Face Size")
         tracks.append({'frame':frame_i,'bbox':bboxes_i})
 
+  print("TRACKS ", len(tracks))
   return tracks
 
 # ========== ========== ========== ==========
@@ -109,9 +127,11 @@ def track_shot(opt,scenefaces):
 # ========== ========== ========== ==========
         
 def crop_video(opt,track,cropfile):
-
+  print("CROP VIDEO")
   flist = glob.glob(os.path.join(opt.frames_dir,opt.reference,'*.jpg'))
   flist.sort()
+
+  print(flist)
 
   fourcc = cv2.VideoWriter_fourcc(*'XVID')
   vOut = cv2.VideoWriter(cropfile+'t.avi', fourcc, opt.frame_rate, (224,224))
@@ -221,25 +241,25 @@ def inference_video(opt):
 
 def scene_detect(opt):
 
-  video_manager = VideoManager([os.path.join(opt.avi_dir,opt.reference,'video.avi')])
+  video_stream = open_video(os.path.join(opt.avi_dir,opt.reference,'video.avi'))
   stats_manager = StatsManager()
   scene_manager = SceneManager(stats_manager)
   # Add ContentDetector algorithm (constructor takes detector options like threshold).
   scene_manager.add_detector(ContentDetector())
-  base_timecode = video_manager.get_base_timecode()
 
-  video_manager.set_downscale_factor()
+  scene_manager.auto_downscale = True
+  #video_manager.set_downscale_factor()
 
-  video_manager.start()
+  # video_manager.start()
 
-  scene_manager.detect_scenes(frame_source=video_manager)
+  scene_manager.detect_scenes(video=video_stream)
 
-  scene_list = scene_manager.get_scene_list(base_timecode)
+  scene_list = scene_manager.get_scene_list(start_in_scene=True)
 
-  savepath = os.path.join(opt.work_dir,opt.reference,'scene.pckl')
+  savepath = os.path.join(opt.work_dir, opt.reference, 'scene.pckl')
 
-  if scene_list == []:
-    scene_list = [(video_manager.get_base_timecode(),video_manager.get_current_timecode())]
+  # if scene_list == []:
+  #   scene_list = [(video_stream.base_timecode,video_stream.frame_rate)]
 
   with open(savepath, 'wb') as fil:
     pickle.dump(scene_list, fil)
@@ -292,6 +312,7 @@ output = subprocess.call(command, shell=True, stdout=None)
 # ========== FACE DETECTION ==========
 
 faces = inference_video(opt)
+print("FACES LEN ", len(faces))
 
 # ========== SCENE DETECTION ==========
 
@@ -303,14 +324,21 @@ alltracks = []
 vidtracks = []
 
 for shot in scene:
-
+  print(shot)
+  print("Shot 1 ", shot[1].frame_num)
+  print("Shot 2 ", shot[0].frame_num)
   if shot[1].frame_num - shot[0].frame_num >= opt.min_track :
+    print("Passed")
     alltracks.extend(track_shot(opt,faces[shot[0].frame_num:shot[1].frame_num]))
 
-# ========== FACE TRACK CROP ==========
+# # ========== FACE TRACK CROP ==========
+
+print(len(alltracks))
 
 for ii, track in enumerate(alltracks):
   vidtracks.append(crop_video(opt,track,os.path.join(opt.crop_dir,opt.reference,'%05d'%ii)))
+
+
 
 # ========== SAVE RESULTS ==========
 
