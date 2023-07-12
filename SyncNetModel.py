@@ -105,6 +105,9 @@ class S(nn.Module):
 
         mid = self.netcnnlip(x); 
         mid = mid.view((mid.size()[0], -1)); # N x (ch x 24)
+
+        print(f"mid {mid.size()}")
+
         out = self.netfclip(mid);
 
         return out;
