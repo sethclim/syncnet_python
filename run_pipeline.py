@@ -128,7 +128,7 @@ def crop_video(opt,track,cropfile):
   flist = glob.glob(os.path.join(opt.frames_dir,opt.reference,'*.jpg'))
   flist.sort()
 
-  print(flist)
+  # print(flist)
 
   fourcc = cv2.VideoWriter_fourcc(*'XVID')
   vOut = cv2.VideoWriter(cropfile+'t.avi', fourcc, opt.frame_rate, (224,224))
@@ -298,13 +298,13 @@ os.makedirs(os.path.join(opt.tmp_dir,opt.reference))
 # ========== CONVERT VIDEO AND EXTRACT FRAMES ==========
 
 command = ("ffmpeg -y -i %s -qscale:v 2 -async 1 -r 25 %s" % (opt.videofile,os.path.join(opt.avi_dir,opt.reference,'video.avi')))
-output = subprocess.call(command, shell=True, stdout=None)
+output = subprocess.run(command)
 
 command = ("ffmpeg -y -i %s -qscale:v 2 -threads 1 -f image2 %s" % (os.path.join(opt.avi_dir,opt.reference,'video.avi'),os.path.join(opt.frames_dir,opt.reference,'%06d.jpg'))) 
-output = subprocess.call(command, shell=True, stdout=None)
+output = subprocess.run(command)
 
 command = ("ffmpeg -y -i %s -ac 1 -vn -acodec pcm_s16le -ar 16000 %s" % (os.path.join(opt.avi_dir,opt.reference,'video.avi'),os.path.join(opt.avi_dir,opt.reference,'audio.wav'))) 
-output = subprocess.call(command, shell=True, stdout=None)
+output = subprocess.run(command)
 
 # ========== FACE DETECTION ==========
 
