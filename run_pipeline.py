@@ -72,36 +72,33 @@ def track_shot(opt,scenefaces):
   count = 0
   while True:
     count = count + 1
-    print("Count ", count)
+
     track     = []
     for framefaces in scenefaces:
-      print("FACE FRAMES ", len(framefaces))
+ 
       for face in framefaces:
-        print("face ", face)
+
         if track == []:
-          print("append face")
+     
           track.append(face)
           framefaces.remove(face)
         elif face['frame'] - track[-1]['frame'] <= opt.num_failed_det:
-          print("num_failed_det ", face['frame'] - track[-1]['frame'])
+
           iou = bb_intersection_over_union(face['bbox'], track[-1]['bbox'])
           if iou > iouThres:
-            print("append face")
+      
             track.append(face)
-            print("track ", len(track))    
+     
             framefaces.remove(face)
-            print("Continue")
+    
             continue
         else:
-          print("BREAKKK")
           break
 
-    print("track2 ", len(track))        
+
     if track == []:
-      print("TRACK = []")
       break
     elif len(track) > opt.min_track:
-      print("len(track)", len(track))
       framenum    = np.array([ f['frame'] for f in track ])
       bboxes      = np.array([np.array(f['bbox']) for f in track])
 
