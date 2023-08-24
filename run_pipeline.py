@@ -172,9 +172,11 @@ def crop_video(opt,track,cropfile):
   # ========== CROP AUDIO FILE ==========
 
   command = ("ffmpeg -y -i %s -ss %.3f -to %.3f %s" % (os.path.join(opt.avi_dir,opt.reference,'audio.wav'),audiostart,audioend,audiotmp)) 
-  output = subprocess.call(command, shell=True, stdout=None)
+  output = subprocess.run(command, shell=True, capture_output=True)
 
-  if output != 0:
+  if output.returncode != 0:
+    print(output.returncode)
+    print(output.stderr)
     pdb.set_trace()
 
   sample_rate, audio = wavfile.read(audiotmp)
@@ -182,9 +184,11 @@ def crop_video(opt,track,cropfile):
   # ========== COMBINE AUDIO AND VIDEO FILES ==========
 
   command = ("ffmpeg -y -i %st.avi -i %s -c:v copy -c:a copy %s.avi" % (cropfile,audiotmp,cropfile))
-  output = subprocess.call(command, shell=True, stdout=None)
+  output = subprocess.run(command, shell=True, capture_output=True)
 
-  if output != 0:
+  if output.returncode != 0:
+    print(output.returncode)
+    print(output.stderr)
     pdb.set_trace()
 
   print('Written %s'%cropfile)
@@ -223,7 +227,7 @@ def inference_video(opt):
 
     elapsed_time = time.time() - start_time
 
-    print('%s-%05d; %d dets; %.2f Hz' % (os.path.join(opt.avi_dir,opt.reference,'video.avi'),fidx,len(dets[-1]),(1/elapsed_time))) 
+    # print('%s-%05d; %d dets; %.2f Hz' % (os.path.join(opt.avi_dir,opt.reference,'video.avi'),fidx,len(dets[-1]),(1/elapsed_time))) 
 
   savepath = os.path.join(opt.work_dir,opt.reference,'faces.pckl')
 
@@ -298,18 +302,18 @@ os.makedirs(os.path.join(opt.tmp_dir,opt.reference))
 # ========== CONVERT VIDEO AND EXTRACT FRAMES ==========
 
 command = ("ffmpeg -y -i %s -qscale:v 2 -async 1 -r 25 %s" % (opt.videofile,os.path.join(opt.avi_dir,opt.reference,'video.avi')))
-output = subprocess.run(command)
+output = subprocess.run(command, capture_output=True)
 
 command = ("ffmpeg -y -i %s -qscale:v 2 -threads 1 -f image2 %s" % (os.path.join(opt.avi_dir,opt.reference,'video.avi'),os.path.join(opt.frames_dir,opt.reference,'%06d.jpg'))) 
-output = subprocess.run(command)
+output = subprocess.run(command, capture_output=True)
 
 command = ("ffmpeg -y -i %s -ac 1 -vn -acodec pcm_s16le -ar 16000 %s" % (os.path.join(opt.avi_dir,opt.reference,'video.avi'),os.path.join(opt.avi_dir,opt.reference,'audio.wav'))) 
-output = subprocess.run(command)
+output = subprocess.run(command, capture_output=True)
 
 # ========== FACE DETECTION ==========
 
 faces = inference_video(opt)
-print("FACES LEN ", len(faces))
+# print("FACES LEN ", len(faces))
 
 # ========== SCENE DETECTION ==========
 
@@ -321,16 +325,13 @@ alltracks = []
 vidtracks = []
 
 for shot in scene:
-  print(shot)
-  print("Shot 1 ", shot[1].frame_num)
-  print("Shot 2 ", shot[0].frame_num)
+  # print("Shot 1 ", shot[1].frame_num)
+  # print("Shot 2 ", shot[0].frame_num)
   if shot[1].frame_num - shot[0].frame_num >= opt.min_track :
-    print("Passed")
+    # print("Passed")
     alltracks.extend(track_shot(opt,faces[shot[0].frame_num:shot[1].frame_num]))
 
-# # ========== FACE TRACK CROP ==========
-
-print(len(alltracks))
+# ========== FACE TRACK CROP ==========
 
 for ii, track in enumerate(alltracks):
   vidtracks.append(crop_video(opt,track,os.path.join(opt.crop_dir,opt.reference,'%05d'%ii)))

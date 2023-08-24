@@ -53,10 +53,10 @@ class SyncNetInstance(torch.nn.Module):
         os.makedirs(os.path.join(opt.tmp_dir,opt.reference))
 
         command = ("ffmpeg -y -i %s -threads 1 -f image2 %s" % (videofile,os.path.join(opt.tmp_dir,opt.reference,'%06d.jpg'))) 
-        output = subprocess.call(command, shell=True, stdout=None)
+        output = subprocess.run(command, shell=True, stdout=None, capture_output=True)
 
         command = ("ffmpeg -y -i %s -async 1 -ac 1 -vn -acodec pcm_s16le -shortest -ar 16000 %s" % (videofile,os.path.join(opt.tmp_dir,opt.reference,'audio.wav'))) 
-        output = subprocess.call(command, shell=True, stdout=None)
+        output = subprocess.run(command, shell=True, stdout=None, capture_output=True)
         
         # ========== ==========
         # Load video 
@@ -124,7 +124,7 @@ class SyncNetInstance(torch.nn.Module):
         # Compute offset
         # ========== ==========
             
-        print('Compute time %.3f sec.' % (time.time()-tS))
+        # print('Compute time %.3f sec.' % (time.time()-tS))
 
         dists = calc_pdist(im_feat,cc_feat,vshift=opt.vshift)
         mdist = torch.mean(torch.stack(dists,1),1)
@@ -140,8 +140,8 @@ class SyncNetInstance(torch.nn.Module):
         fconfm  = signal.medfilt(fconf,kernel_size=9)
         
         numpy.set_printoptions(formatter={'float': '{: 0.3f}'.format})
-        print('Framewise conf: ')
-        print(fconfm)
+        # print('Framewise conf: ')
+        # print(fconfm)
         print('AV offset: \t%d \nMin dist: \t%.3f\nConfidence: \t%.3f' % (offset,minval,conf))
 
         dists_npy = numpy.array([ dist.numpy() for dist in dists ])
