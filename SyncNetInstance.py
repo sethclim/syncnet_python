@@ -52,10 +52,10 @@ class SyncNetInstance(torch.nn.Module):
 
         os.makedirs(os.path.join(opt.tmp_dir,opt.reference))
 
-        command = ("ffmpeg -y -i %s -threads 1 -f image2 %s" % (videofile,os.path.join(opt.tmp_dir,opt.reference,'%06d.jpg'))) 
+        command = ["ffmpeg", "-y", "-i", videofile, "-threads", "1", "-f", "image2", os.path.join(opt.tmp_dir,opt.reference,'%06d.jpg')]
         output = subprocess.run(command, shell=True, stdout=None, capture_output=True)
 
-        command = ("ffmpeg -y -i %s -async 1 -ac 1 -vn -acodec pcm_s16le -shortest -ar 16000 %s" % (videofile,os.path.join(opt.tmp_dir,opt.reference,'audio.wav'))) 
+        command = ["ffmpeg", "-y", "-i", videofile, "-async", "1", "-ac", "1", "-vn", "-acodec", "pcm_s16l", "-shortest", "-ar", "16000", os.path.join(opt.tmp_dir,opt.reference,'audio.wav')]
         output = subprocess.run(command, shell=True, stdout=None, capture_output=True)
         
         # ========== ==========

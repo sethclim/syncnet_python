@@ -21,34 +21,12 @@ from .detectors import S3FD
 class RunPipeline():
 
   def __init__(self, opt):
-    # ========== ========== ========== ==========
-    # # PARSE ARGS
-    # ========== ========== ========== ==========
-
-    # parser = argparse.ArgumentParser(description = "FaceTracker")
-    # parser.add_argument('--data_dir',       type=str, default='data/work', help='Output direcotry')
-    # parser.add_argument('--videofile',      type=str, default='',   help='Input video file')
-    # parser.add_argument('--reference',      type=str, default='',   help='Video reference')
-    # parser.add_argument('--facedet_scale',  type=float, default=0.25, help='Scale factor for face detection')
-    # parser.add_argument('--crop_scale',     type=float, default=0.40, help='Scale bounding box')
-    # parser.add_argument('--min_track',      type=int, default=100,  help='Minimum facetrack duration')
-    # parser.add_argument('--frame_rate',     type=int, default=25,   help='Frame rate')
-    # parser.add_argument('--num_failed_det', type=int, default=25,   help='Number of missed detections allowed before tracking is stopped')
-    # parser.add_argument('--min_face_size',  type=int, default=100,  help='Minimum face size in pixels')
     self.opt = opt
-
-    # setattr(self.opt,'avi_dir',os.path.join(self.opt.data_dir,'pyavi'))
-    # setattr(self.opt,'tmp_dir',os.path.join(self.opt.data_dir,'pytmp'))
-    # setattr(self.opt,'work_dir',os.path.join(self.opt.data_dir,'pywork'))
-    # setattr(self.opt,'crop_dir',os.path.join(self.opt.data_dir,'pycrop'))
-    # setattr(self.opt,'frames_dir',os.path.join(self.opt.data_dir,'pyframes'))
-
     self.DET = S3FD(device='cuda')
 
   # ========== ========== ========== ==========
   # # IOU FUNCTION
   # ========== ========== ========== ==========
-
   def bb_intersection_over_union(self, boxA, boxB):
     
     xA = max(boxA[0], boxB[0])
@@ -68,7 +46,6 @@ class RunPipeline():
   # ========== ========== ========== ==========
   # # FACE TRACKING
   # ========== ========== ========== ==========
-
   def track_shot(self, opt,scenefaces):
 
     iouThres  = 0.5     # Minimum IOU between consecutive face detections
@@ -127,7 +104,6 @@ class RunPipeline():
   # ========== ========== ========== ==========
   # # VIDEO CROP AND SAVE
   # ========== ========== ========== ==========
-          
   def crop_video(self, opt,track,cropfile):
     print("CROP VIDEO")
     flist = glob.glob(os.path.join(opt.frames_dir,opt.reference,'*.jpg'))
@@ -175,9 +151,13 @@ class RunPipeline():
     vOut.release()
 
     # ========== CROP AUDIO FILE ==========
-
-    command = ("ffmpeg -y -i %s -ss %.3f -to %.3f %s" % (os.path.join(opt.avi_dir,opt.reference,'audio.wav'),audiostart,audioend,audiotmp)) 
-    output = subprocess.run(command, shell=True, capture_output=True)
+    command = ["ffmpeg", "-y", 
+              "-i",os.path.join(opt.avi_dir,opt.reference,'audio.wav'), 
+              "-ss", "{:.3f}".format(audiostart), 
+              "-to","{:.3f}".format(audioend), 
+              audiotmp]
+    
+    output = subprocess.run(args=command, capture_output=True, shell=False)
 
     if output.returncode != 0:
       print(output.returncode)
@@ -187,9 +167,8 @@ class RunPipeline():
     sample_rate, audio = wavfile.read(audiotmp)
 
     # ========== COMBINE AUDIO AND VIDEO FILES ==========
-
-    command = ("ffmpeg -y -i %st.avi -i %s -c:v copy -c:a copy %s.avi" % (cropfile,audiotmp,cropfile))
-    output = subprocess.run(command, shell=True, capture_output=True)
+    command = ["ffmpeg", "-y", "-i", f"{cropfile}t.avi", "-i", audiotmp, "-c:v", "copy", "-c:a", "copy", f"{cropfile}.avi"]
+    output = subprocess.run(command, capture_output=True)
 
     if output.returncode != 0:
       print(output.returncode)
@@ -207,11 +186,7 @@ class RunPipeline():
   # ========== ========== ========== ==========
   # # FACE DETECTION
   # ========== ========== ========== ==========
-
   def inference_video(self, opt):
-
-
-
     flist = glob.glob(os.path.join(opt.frames_dir,opt.reference,'*.jpg'))
     flist.sort()
 
@@ -244,7 +219,6 @@ class RunPipeline():
   # ========== ========== ========== ==========
   # # SCENE DETECTION
   # ========== ========== ========== ==========
-
   def scene_detect(self, opt):
 
     video_stream = open_video(os.path.join(opt.avi_dir,opt.reference,'video.avi'))
@@ -279,13 +253,8 @@ class RunPipeline():
     self.opt.reference = reference
     self.opt.min_track = min_track
     self.opt.videofile = video_file
-    
-    # ========== ========== ========== ==========
-    # # EXECUTE DEMO
-    # ========== ========== ========== ==========
 
     # ========== DELETE EXISTING DIRECTORIES ==========
-
     if os.path.exists(os.path.join(self.opt.work_dir,self.opt.reference)):
       rmtree(os.path.join(self.opt.work_dir,self.opt.reference))
 
@@ -302,7 +271,6 @@ class RunPipeline():
       rmtree(os.path.join(self.opt.tmp_dir,self.opt.reference))
 
     # ========== MAKE NEW DIRECTORIES ==========
-
     os.makedirs(os.path.join(self.opt.work_dir,self.opt.reference))
     os.makedirs(os.path.join(self.opt.crop_dir,self.opt.reference))
     os.makedirs(os.path.join(self.opt.avi_dir,self.opt.reference))
@@ -311,26 +279,28 @@ class RunPipeline():
 
     # ========== CONVERT VIDEO AND EXTRACT FRAMES ==========
 
-    command = ("ffmpeg -y -i %s -qscale:v 2 -async 1 -r 25 %s" % (self.opt.videofile,os.path.join(self.opt.avi_dir, self.opt.reference,'video.avi')))
-    output = subprocess.run(command, capture_output=True)
+    command = ["ffmpeg", "-y", 
+               "-i", self.opt.videofile, 
+               "-qscale:v", "2", 
+               "-async", "1",
+               "-r", "25", 
+               os.path.join(self.opt.avi_dir, self.opt.reference,"video.avi")]
+    
+    output = subprocess.run(args=command)
 
-    command = ("ffmpeg -y -i %s -qscale:v 2 -threads 1 -f image2 %s" % (os.path.join(self.opt.avi_dir, self.opt.reference,'video.avi'),os.path.join(self.opt.frames_dir,self.opt.reference,'%06d.jpg'))) 
-    output = subprocess.run(command, capture_output=True)
+    command = ["ffmpeg", "-y", "-i", os.path.join(self.opt.avi_dir, self.opt.reference,'video.avi'), "-qscale:v", "2", "-threads", "1", "-f", "image2", os.path.join(self.opt.frames_dir,self.opt.reference,'%06d.jpg')] 
+    output = subprocess.run(args=command)
 
-    command = ("ffmpeg -y -i %s -ac 1 -vn -acodec pcm_s16le -ar 16000 %s" % (os.path.join(self.opt.avi_dir,self.opt.reference,'video.avi'),os.path.join(self.opt.avi_dir,self.opt.reference,'audio.wav'))) 
-    output = subprocess.run(command, capture_output=True)
+    command = ["ffmpeg", "-y", "-i", os.path.join(self.opt.avi_dir,self.opt.reference,'video.avi'), "-ac", "1", "-vn", "-acodec", "pcm_s16le", "-ar", "16000", os.path.join(self.opt.avi_dir,self.opt.reference,'audio.wav')]
+    output = subprocess.run(args=command)
 
     # ========== FACE DETECTION ==========
-
     faces = self.inference_video(self.opt)
-    # print("FACES LEN ", len(faces))
 
     # ========== SCENE DETECTION ==========
-
     scene = self.scene_detect(self.opt)
 
-    # ========== FACE TRACKING ==========
-
+    # ========== FACE TRACKING ========== 
     alltracks = []
     vidtracks = []
 
@@ -342,14 +312,12 @@ class RunPipeline():
         alltracks.extend(self.track_shot(self.opt,faces[shot[0].frame_num:shot[1].frame_num]))
 
     # ========== FACE TRACK CROP ==========
-
     for ii, track in enumerate(alltracks):
       vidtracks.append(self.crop_video(self.opt,track,os.path.join(self.opt.crop_dir, self.opt.reference,'%05d'%ii)))
 
 
 
     # ========== SAVE RESULTS ==========
-
     savepath = os.path.join(self.opt.work_dir, self.opt.reference,'tracks.pckl')
 
     with open(savepath, 'wb') as fil:
